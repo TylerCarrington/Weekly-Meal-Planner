@@ -1,0 +1,170 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128;
+    }
+
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function isPlannerMember(plannerId) {
+      return isSignedIn() && exists(/databases/$(database)/documents/planners/$(plannerId)/members/$(request.auth.uid));
+    }
+    
+    function isPlannerOwnerOrEditor(plannerId) {
+      return isSignedIn() && (
+        get(/databases/$(database)/documents/planners/$(plannerId)/members/$(request.auth.uid)).data.role in ['owner', 'editor']
+      );
+    }
+
+    function isPlannerOwner(plannerId) {
+      return isSignedIn() && (
+        get(/databases/$(database)/documents/planners/$(plannerId)/members/$(request.auth.uid)).data.role == 'owner'
+      );
+    }
+
+    function isValidPlanner(data) {
+      return data.keys().hasAll(['name', 'ownerId', 'createdAt']) &&
+             data.keys().size() == 3 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.ownerId == request.auth.uid &&
+             data.createdAt is number;
+    }
+
+    function isValidPlannerMember(data) {
+      return data.keys().hasAll(['email', 'role', 'joinedAt']) &&
+             data.keys().size() <= 3 &&
+             data.email is string && data.email.size() > 0 && data.email.size() <= 200 &&
+             data.role in ['owner', 'editor', 'viewer'] &&
+             data.joinedAt is number;
+    }
+
+    function isValidMealEntry(data) {
+      return data.keys().hasAll(['date', 'type', 'name']) &&
+             data.date is string && data.date.size() <= 20 &&
+             data.type is string && data.type.size() <= 20 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             (!('createdAt' in data) || data.createdAt is number) &&
+             (!('order' in data) || data.order is number) &&
+             (!('recipeId' in data) || (data.recipeId is string && data.recipeId.size() <= 128));
+    }
+
+    function isValidMealDetail(data) {
+      return data.keys().hasAny(['name']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             (!('ingredients' in data) || (data.ingredients is list && data.ingredients.size() <= 50)) &&
+             (!('labels' in data) || (data.labels is list && data.labels.size() <= 20)) &&
+             (!('dietaryFlags' in data) || (data.dietaryFlags is list && data.dietaryFlags.size() <= 20));
+    }
+
+    function isValidRecipe(data) {
+       return data.keys().hasAll(['name']) &&
+              data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+              (!('createdAt' in data) || data.createdAt is number) &&
+             (!('ingredients' in data) || (data.ingredients is list && data.ingredients.size() <= 50)) &&
+             (!('labels' in data) || (data.labels is list && data.labels.size() <= 20)) &&
+             (!('dietaryFlags' in data) || (data.dietaryFlags is list && data.dietaryFlags.size() <= 20));
+    }
+
+    function isValidGroceryListState(data) {
+       return data.keys().hasAll(['manualItems', 'checkedIds', 'removedIds']) &&
+              data.manualItems is list && data.manualItems.size() <= 200 &&
+              (data.manualItems.size() == 0 || data.manualItems[0] is map) &&
+              data.checkedIds is list && data.checkedIds.size() <= 500 &&
+              (data.checkedIds.size() == 0 || data.checkedIds[0] is string) &&
+              data.removedIds is list && data.removedIds.size() <= 500 &&
+              (data.removedIds.size() == 0 || data.removedIds[0] is string);
+    }
+
+    function isValidCalendarEvent(data) {
+       return data.keys().hasAll(['date', 'title', 'category']) &&
+              data.date is string && data.date.size() <= 20 &&
+              data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+              data.category is string && data.category.size() <= 50 &&
+              (!('createdAt' in data) || data.createdAt is number);
+    }
+
+    match /planners/{plannerId} {
+      allow get: if isPlannerMember(plannerId);
+      allow list: if false; // Users query their planner list via `members`
+      allow create: if isSignedIn() && isValidId(plannerId) && isValidPlanner(incoming());
+      allow update: if isPlannerOwner(plannerId) && incoming().diff(existing()).affectedKeys().hasOnly(['name']) && incoming().name is string && incoming().name.size() <= 100;
+      allow delete: if false;
+    }
+
+    function isValidInvite(data) {
+      return data.keys().hasAll(['role', 'createdAt']) && data.role in ['editor', 'viewer'] && data.createdAt is number;
+    }
+
+    match /planners/{plannerId}/members/{userId} {
+      allow read: if isPlannerMember(plannerId) || request.auth.uid == userId;
+      allow list: if isValidId(userId) && request.auth.uid == userId; // For querying what planners I am a member of using collectionGroup
+      allow create: if (isPlannerOwner(plannerId) || (isSignedIn() && userId == request.auth.uid && exists(/databases/$(database)/documents/planners/$(plannerId)/invites/$(request.auth.token.email))) || (isSignedIn() && userId == request.auth.uid && !exists(/databases/$(database)/documents/planners/$(plannerId))))
+                    && isValidId(userId) && isValidPlannerMember(incoming());
+      allow update: if isPlannerOwner(plannerId) && incoming().diff(existing()).affectedKeys().hasOnly(['role']) && incoming().role in ['owner', 'editor', 'viewer'];
+      allow delete: if isPlannerOwner(plannerId) && userId != request.auth.uid; // Don't delete self
+    }
+
+    match /planners/{plannerId}/invites/{emailId} {
+      allow read: if isPlannerMember(plannerId) || (isSignedIn() && request.auth.token.email == emailId);
+      allow create, update: if isPlannerOwner(plannerId) && isValidInvite(incoming());
+      allow delete: if isPlannerOwner(plannerId) || (isSignedIn() && request.auth.token.email == emailId);
+    }
+
+    match /planners/{plannerId}/meals/{mealId} {
+      allow read: if isPlannerMember(plannerId);
+      allow create: if isPlannerOwnerOrEditor(plannerId) && isValidId(mealId) && isValidMealEntry(incoming());
+      allow update: if isPlannerOwnerOrEditor(plannerId) && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['name', 'date', 'type', 'order', 'recipeId']) && 
+                    isValidMealEntry(incoming());
+      allow delete: if isPlannerOwnerOrEditor(plannerId);
+    }
+
+    match /planners/{plannerId}/mealDetails/{mealId} {
+      allow read: if isPlannerMember(plannerId);
+      allow create: if isPlannerOwnerOrEditor(plannerId) && isValidId(mealId) && isValidMealDetail(incoming());
+      allow update: if isPlannerOwnerOrEditor(plannerId) && isValidMealDetail(incoming());
+      allow delete: if isPlannerOwnerOrEditor(plannerId);
+    }
+
+    match /planners/{plannerId}/recipes/{recipeId} {
+      allow read: if isPlannerMember(plannerId);
+      allow create: if isPlannerOwnerOrEditor(plannerId) && isValidId(recipeId) && isValidRecipe(incoming());
+      allow update: if isPlannerOwnerOrEditor(plannerId) && isValidRecipe(incoming());
+      allow delete: if isPlannerOwnerOrEditor(plannerId);
+    }
+
+    match /planners/{plannerId}/groceryStates/{weekKey} {
+      allow read: if isPlannerMember(plannerId);
+      allow create: if isPlannerOwnerOrEditor(plannerId) && isValidId(weekKey) && isValidGroceryListState(incoming());
+      allow update: if isPlannerOwnerOrEditor(plannerId) && isValidGroceryListState(incoming());
+      allow delete: if isPlannerOwnerOrEditor(plannerId);
+    }
+
+    match /planners/{plannerId}/events/{eventId} {
+      allow read: if isPlannerMember(plannerId);
+      allow create: if isPlannerOwnerOrEditor(plannerId) && isValidId(eventId) && isValidCalendarEvent(incoming());
+      allow update: if isPlannerOwnerOrEditor(plannerId) && incoming().diff(existing()).affectedKeys().hasOnly(['date', 'title', 'category', 'startTime', 'endTime', 'location', 'notes', 'colorLabel']) && isValidCalendarEvent(incoming());
+      allow delete: if isPlannerOwnerOrEditor(plannerId);
+    }
+    
+    function isValidUserPlanner(data) {
+        return data.keys().hasAll(['planners']) && data.planners is map;
+    }
+
+    match /userPlanners/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create, update: if isSignedIn() && request.auth.uid == userId && isValidUserPlanner(incoming());
+      allow delete: if false;
+    }
+  }
+}

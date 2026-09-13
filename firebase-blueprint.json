@@ -1,0 +1,122 @@
+{
+  "entities": {
+    "Planner": {
+      "title": "Planner",
+      "description": "A shared planner. The root resource.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["name", "ownerId", "createdAt"]
+    },
+    "PlannerMember": {
+      "title": "PlannerMember",
+      "description": "A member of a planner",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["owner", "editor", "viewer"] },
+        "joinedAt": { "type": "number" }
+      },
+      "required": ["email", "role", "joinedAt"]
+    },
+    "MealEntry": {
+      "title": "MealEntry",
+      "description": "Represents a single meal entry in a week",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "type": { "type": "string" },
+        "name": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["date", "type", "name", "createdAt"]
+    },
+    "MealDetail": {
+      "title": "MealDetail",
+      "description": "Rich details for a meal entry",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "ingredients": { "type": "array" },
+        "sourceUrl": { "type": "string" },
+        "notes": { "type": "string" },
+        "directions": { "type": "string" },
+        "labels": { "type": "array" },
+        "imageUrl": { "type": "string" },
+        "rating": { "type": "number" },
+        "prepTime": { "type": "number" },
+        "cookTime": { "type": "number" },
+        "servings": { "type": "number" },
+        "cuisineTag": { "type": "string" },
+        "dietaryFlags": { "type": "array" }
+      },
+      "required": ["name"]
+    },
+    "Recipe": {
+      "title": "Recipe",
+      "description": "A recipe",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "timesUsed": { "type": "number" }
+      },
+      "required": ["name", "createdAt"]
+    },
+    "GroceryListState": {
+      "title": "GroceryListState",
+      "description": "Grocery list state",
+      "type": "object",
+      "properties": {
+        "manualItems": { "type": "array" },
+        "checkedIds": { "type": "array" },
+        "removedIds": { "type": "array" }
+      },
+      "required": ["manualItems", "checkedIds", "removedIds"]
+    },
+    "CalendarEvent": {
+      "title": "CalendarEvent",
+      "description": "A calendar event",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["date", "title", "category"]
+    }
+  },
+  "firestore": {
+    "planners/{plannerId}": {
+      "schema": "Planner",
+      "description": "The planner"
+    },
+    "planners/{plannerId}/members/{userId}": {
+      "schema": "PlannerMember",
+      "description": "Members of the planner"
+    },
+    "planners/{plannerId}/meals/{mealId}": {
+      "schema": "MealEntry",
+      "description": "Meal entries across all weeks. We can query by date."
+    },
+    "planners/{plannerId}/mealDetails/{mealId}": {
+      "schema": "MealDetail",
+      "description": "Meal details, also used for recipes"
+    },
+    "planners/{plannerId}/recipes/{recipeId}": {
+      "schema": "Recipe",
+      "description": "Recipes in the planner"
+    },
+    "planners/{plannerId}/groceryStates/{weekKey}": {
+      "schema": "GroceryListState",
+      "description": "Grocery state for a week"
+    },
+    "planners/{plannerId}/events/{eventId}": {
+      "schema": "CalendarEvent",
+      "description": "Events across all weeks"
+    }
+  }
+}
