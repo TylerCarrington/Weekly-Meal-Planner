@@ -2,5 +2,5 @@
   "name": "Weekly Planner",
   "description": "A digital weekly planner mirroring a physical layout, starting with meal planning and expanding to events, habits, and more.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
