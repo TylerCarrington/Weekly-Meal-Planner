@@ -12,6 +12,7 @@ import { GroceryListPanel } from './components/GroceryListPanel';
 import { RecipeManager } from './components/recipes/RecipeManager';
 import { MoveCopyMealModal } from './components/MoveCopyMealModal';
 import { CopyWeekModal } from './components/CopyWeekModal';
+import { PwaInstallPrompt } from './components/PwaInstallPrompt';
 import { usePlanner } from './contexts/PlannerContext';
 import { useAuth } from './contexts/AuthContext';
 import { useWeekNavigation } from './hooks/useWeekNavigation';
@@ -232,6 +233,8 @@ export default function App() {
           <span>Responsive: Enabled</span>
         </div>
       </footer>
+
+      <PwaInstallPrompt />
     </div>
   );
 }
