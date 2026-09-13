@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { MealEntry, MealType, WeeklyMealPlan } from '../types/meals';
-import { getWeekKey } from '../utils/dateUtils';
+import { MealEntry, MealType, WeeklyMealPlan, CopyWeekMode, WeekSummaryPreview } from '../types/meals';
+import { getWeekKey, WEEK_STARTS_ON } from '../utils/dateUtils';
 import { db } from '../lib/firebase';
 import { collection, doc, query, where, getDocs, getDoc, setDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { parseISO, addDays, subWeeks, format, startOfWeek, endOfWeek } from 'date-fns';
 
 export interface StorageResult<T> {
   data: T | null;
@@ -93,17 +94,25 @@ export async function deleteMeal(plannerId: string, id: string): Promise<Storage
   }
 }
 
-export async function duplicateMeal(plannerId: string, id: string): Promise<StorageResult<MealEntry>> {
+export async function duplicateMeal(
+  plannerId: string, 
+  id: string, 
+  targetDateStr?: string, 
+  targetType?: MealType
+): Promise<StorageResult<MealEntry>> {
   try {
     const docRef = doc(db, `planners/${plannerId}/meals`, id);
     const snap = await getDoc(docRef);
     if (!snap.exists()) throw new Error('Meal to duplicate not found');
     const existing = snap.data() as Omit<MealEntry, 'id'>;
 
+    const destDate = targetDateStr || existing.date;
+    const destType = targetType || existing.type;
+
     const q = query(
       collection(db, `planners/${plannerId}/meals`),
-      where('date', '==', existing.date),
-      where('type', '==', existing.type)
+      where('date', '==', destDate),
+      where('type', '==', destType)
     );
     const slotSnaps = await getDocs(q);
     const maxOrder = slotSnaps.docs.length > 0 ? Math.max(...slotSnaps.docs.map(d => d.data().order || 0)) : 0;
@@ -112,8 +121,10 @@ export async function duplicateMeal(plannerId: string, id: string): Promise<Stor
     const newMeal = {
       ...existing,
       id: newId,
+      date: destDate,
+      type: destType,
       order: maxOrder + 1,
-      createdAt: existing.createdAt || Date.now(),
+      createdAt: Date.now(),
     };
     
     const newDocRef = doc(db, `planners/${plannerId}/meals`, newId);
@@ -131,6 +142,19 @@ export async function duplicateMeal(plannerId: string, id: string): Promise<Stor
     handleFirestoreError(err, OperationType.CREATE, `planners/${plannerId}/meals`);
     return { data: null, error: err.message || 'Failed to duplicate meal' };
   }
+}
+
+export async function moveMealToSlot(
+  plannerId: string,
+  id: string,
+  targetDateStr: string,
+  targetType?: MealType
+): Promise<StorageResult<MealEntry>> {
+  const updates: Partial<MealEntry> = { date: targetDateStr };
+  if (targetType) {
+    updates.type = targetType;
+  }
+  return updateMeal(plannerId, id, updates);
 }
 
 export async function getMealDetail(plannerId: string, id: string): Promise<StorageResult<MealEntry>> {
@@ -181,6 +205,142 @@ export async function updateMealDetail(plannerId: string, id: string, details: M
   } catch (err: any) {
     handleFirestoreError(err, OperationType.UPDATE, `planners/${plannerId}/mealDetails/${id}`);
     return { data: null, error: err.message || 'Failed to update meal details' };
+  }
+}
+
+export async function getPreviousWeekSummary(
+  plannerId: string,
+  targetWeekDate: Date
+): Promise<StorageResult<WeekSummaryPreview>> {
+  try {
+    const targetStart = startOfWeek(targetWeekDate, { weekStartsOn: WEEK_STARTS_ON });
+    const targetEnd = endOfWeek(targetWeekDate, { weekStartsOn: WEEK_STARTS_ON });
+    const formattedTargetStart = format(targetStart, 'yyyy-MM-dd');
+    const formattedTargetEnd = format(targetEnd, 'yyyy-MM-dd');
+
+    const prevStart = subWeeks(targetStart, 1);
+    const prevEnd = addDays(prevStart, 6);
+    const formattedPrevStart = format(prevStart, 'yyyy-MM-dd');
+    const formattedPrevEnd = format(prevEnd, 'yyyy-MM-dd');
+
+    const prevQuery = query(
+      collection(db, `planners/${plannerId}/meals`),
+      where('date', '>=', formattedPrevStart),
+      where('date', '<=', formattedPrevEnd)
+    );
+    const prevSnap = await getDocs(prevQuery);
+
+    const targetQuery = query(
+      collection(db, `planners/${plannerId}/meals`),
+      where('date', '>=', formattedTargetStart),
+      where('date', '<=', formattedTargetEnd)
+    );
+    const targetSnap = await getDocs(targetQuery);
+
+    const sourceMeals = prevSnap.docs.map(d => {
+      const data = d.data();
+      return {
+        id: d.id,
+        name: data.name || '',
+        date: data.date || '',
+        type: data.type as MealType,
+      };
+    }).sort((a, b) => a.date.localeCompare(b.date));
+
+    return {
+      data: {
+        prevWeekStartStr: formattedPrevStart,
+        prevWeekEndStr: formattedPrevEnd,
+        targetWeekStartStr: formattedTargetStart,
+        targetWeekEndStr: formattedTargetEnd,
+        sourceMealsCount: prevSnap.size,
+        targetMealsCount: targetSnap.size,
+        sourceMeals,
+      },
+      error: null,
+    };
+  } catch (err: any) {
+    handleFirestoreError(err, OperationType.LIST, `planners/${plannerId}/meals`);
+    return { data: null, error: err.message || 'Failed to get previous week summary' };
+  }
+}
+
+export async function copyPreviousWeekMeals(
+  plannerId: string,
+  targetWeekDate: Date,
+  mode: CopyWeekMode = 'append'
+): Promise<StorageResult<{ copiedCount: number }>> {
+  try {
+    const targetStart = startOfWeek(targetWeekDate, { weekStartsOn: WEEK_STARTS_ON });
+    const targetEnd = endOfWeek(targetWeekDate, { weekStartsOn: WEEK_STARTS_ON });
+    const targetStartStr = format(targetStart, 'yyyy-MM-dd');
+    const targetEndStr = format(targetEnd, 'yyyy-MM-dd');
+
+    const prevStart = subWeeks(targetStart, 1);
+    const prevEnd = addDays(prevStart, 6);
+    const prevStartStr = format(prevStart, 'yyyy-MM-dd');
+    const prevEndStr = format(prevEnd, 'yyyy-MM-dd');
+
+    const prevQuery = query(
+      collection(db, `planners/${plannerId}/meals`),
+      where('date', '>=', prevStartStr),
+      where('date', '<=', prevEndStr)
+    );
+    const prevSnap = await getDocs(prevQuery);
+
+    if (prevSnap.empty) {
+      return { data: { copiedCount: 0 }, error: 'No meals found in the previous week to copy.' };
+    }
+
+    const batch = writeBatch(db);
+
+    if (mode === 'replace') {
+      const targetQuery = query(
+        collection(db, `planners/${plannerId}/meals`),
+        where('date', '>=', targetStartStr),
+        where('date', '<=', targetEndStr)
+      );
+      const targetSnap = await getDocs(targetQuery);
+      for (const targetDoc of targetSnap.docs) {
+        batch.delete(targetDoc.ref);
+        batch.delete(doc(db, `planners/${plannerId}/mealDetails`, targetDoc.id));
+      }
+    }
+
+    for (const mealDoc of prevSnap.docs) {
+      const oldMeal = mealDoc.data() as MealEntry;
+      const oldMealId = mealDoc.id;
+
+      const oldDate = parseISO(oldMeal.date);
+      const newDate = addDays(oldDate, 7);
+      const newDateStr = format(newDate, 'yyyy-MM-dd');
+
+      const newId = generateId();
+      const newMeal: any = {
+        ...oldMeal,
+        id: newId,
+        date: newDateStr,
+        createdAt: Date.now(),
+      };
+
+      const cleaned = cleanForStorage(newMeal);
+      const newDocRef = doc(db, `planners/${plannerId}/meals`, newId);
+      batch.set(newDocRef, cleaned);
+
+      const detailDocRef = doc(db, `planners/${plannerId}/mealDetails`, oldMealId);
+      const detailSnap = await getDoc(detailDocRef);
+      if (detailSnap.exists()) {
+        const newDetailRef = doc(db, `planners/${plannerId}/mealDetails`, newId);
+        batch.set(newDetailRef, detailSnap.data());
+      }
+    }
+
+    await batch.commit();
+
+    return { data: { copiedCount: prevSnap.size }, error: null };
+  } catch (err: any) {
+    handleFirestoreError(err, OperationType.CREATE, `planners/${plannerId}/meals`);
+    return { data: null, error: err.message || 'Failed to copy previous week meals' };
   }
 }
 

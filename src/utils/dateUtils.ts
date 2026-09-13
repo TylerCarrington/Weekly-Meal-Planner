@@ -3,15 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { addDays, format, isSameDay, startOfWeek } from 'date-fns';
+import { addDays, format, isSameDay, startOfWeek, subWeeks } from 'date-fns';
 import { DayInfo } from '../types';
+
+/** Day index for week start: 0 = Sunday, 1 = Monday */
+export const WEEK_STARTS_ON = 0;
 
 /**
  * Returns an array of 7 DayInfo objects for the week containing the given date.
- * Weeks start on Monday.
+ * Weeks start on Sunday.
  */
 export function getDaysInWeek(date: Date): DayInfo[] {
-  const start = startOfWeek(date, { weekStartsOn: 1 });
+  const start = startOfWeek(date, { weekStartsOn: WEEK_STARTS_ON });
   const today = new Date();
 
   return Array.from({ length: 7 }).map((_, i) => {
@@ -31,7 +34,7 @@ export function getDaysInWeek(date: Date): DayInfo[] {
  * Returns a formatted date range for the week (e.g., "Oct 24 – Oct 30, 2026")
  */
 export function getWeekRangeHeader(date: Date): string {
-  const start = startOfWeek(date, { weekStartsOn: 1 });
+  const start = startOfWeek(date, { weekStartsOn: WEEK_STARTS_ON });
   const end = addDays(start, 6);
 
   if (start.getFullYear() !== end.getFullYear()) {
@@ -46,12 +49,12 @@ export function getWeekRangeHeader(date: Date): string {
 }
 
 /**
- * Generates a consistent week key (YYYY-MM-DD of Monday) for data storage.
+ * Generates a consistent week key (YYYY-MM-DD of Sunday) for data storage.
  */
 export function getWeekKey(date: Date | string): string {
   const parsedDate = typeof date === 'string' ? new Date(date) : date;
   // If the parsed date is invalid, fallback to today to prevent format sequence errors
   const safeDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
-  const start = startOfWeek(safeDate, { weekStartsOn: 1 });
+  const start = startOfWeek(safeDate, { weekStartsOn: WEEK_STARTS_ON });
   return format(start, 'yyyy-MM-dd');
 }

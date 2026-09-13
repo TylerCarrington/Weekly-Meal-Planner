@@ -26,18 +26,18 @@ export const EventChip: FC<EventChipProps> = ({ event, onDelete, onDuplicate, on
   };
 
   const colorClasses = {
-    Appointment: 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-200 dark:hover:bg-emerald-500/30',
-    Sports: 'bg-orange-100 text-orange-900 hover:bg-orange-200 dark:bg-orange-500/20 dark:text-orange-200 dark:hover:bg-orange-500/30',
-    'Special Event': 'bg-pink-100 text-pink-900 hover:bg-pink-200 dark:bg-pink-500/20 dark:text-pink-200 dark:hover:bg-pink-500/30',
-    Custom: 'bg-slate-200 text-slate-900 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600',
-  }[event.category] || 'bg-slate-200 text-slate-900 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600';
+    Appointment: 'bg-teal-100/90 text-teal-950 border border-teal-300/90 hover:bg-teal-200/90 dark:bg-teal-500/20 dark:text-teal-200 dark:border-teal-500/30 dark:hover:bg-teal-500/30',
+    Sports: 'bg-orange-100/90 text-orange-950 border border-orange-300/90 hover:bg-orange-200/90 dark:bg-orange-500/20 dark:text-orange-200 dark:border-orange-500/30 dark:hover:bg-orange-500/30',
+    'Special Event': 'bg-fuchsia-100/90 text-fuchsia-950 border border-fuchsia-300/90 hover:bg-fuchsia-200/90 dark:bg-fuchsia-500/20 dark:text-fuchsia-200 dark:border-fuchsia-500/30 dark:hover:bg-fuchsia-500/30',
+    Custom: 'bg-sky-100/90 text-sky-950 border border-sky-300/90 hover:bg-sky-200/90 dark:bg-sky-500/20 dark:text-sky-200 dark:border-sky-500/30 dark:hover:bg-sky-500/30',
+  }[event.category] || 'bg-sky-100/90 text-sky-950 border border-sky-300/90 hover:bg-sky-200/90 dark:bg-sky-500/20 dark:text-sky-200 dark:border-sky-500/30 dark:hover:bg-sky-500/30';
 
   const dotColor = {
-    Appointment: 'bg-emerald-500 dark:bg-emerald-400',
+    Appointment: 'bg-teal-500 dark:bg-teal-400',
     Sports: 'bg-orange-500 dark:bg-orange-400',
-    'Special Event': 'bg-pink-500 dark:bg-pink-400',
-    Custom: 'bg-slate-500 dark:bg-slate-400',
-  }[event.category] || 'bg-slate-500 dark:bg-slate-400';
+    'Special Event': 'bg-fuchsia-500 dark:bg-fuchsia-400',
+    Custom: 'bg-sky-500 dark:bg-sky-400',
+  }[event.category] || 'bg-sky-500 dark:bg-sky-400';
 
   const handleContainerClick = (e: React.MouseEvent) => {
     e.stopPropagation();

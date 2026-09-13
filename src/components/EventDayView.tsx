@@ -78,7 +78,7 @@ export const EventDayView: FC<EventDayViewProps> = ({
       {isAdding ? (
         <input
           autoFocus
-          className="w-40 rounded-full border border-indigo-200 px-3 py-1 text-[13px] text-slate-800 focus:border-indigo-500 focus:outline-none dark:border-indigo-800 dark:bg-slate-900 dark:text-slate-200"
+          className="w-40 rounded-full border border-sky-300 bg-white px-3 py-1 text-[13px] font-medium text-slate-800 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-400 dark:border-indigo-800 dark:bg-slate-900 dark:text-slate-200"
           value={newValue}
           onChange={(e) => setNewValue(e.target.value)}
           onBlur={handleBlur}
@@ -89,8 +89,8 @@ export const EventDayView: FC<EventDayViewProps> = ({
         <button
           onClick={() => setIsAdding(true)}
           className={cn(
-            "flex items-center gap-1 rounded-full px-3 py-1 text-[13px] font-medium text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300",
-            events.length === 0 && "opacity-60"
+            "flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[12px] font-semibold text-sky-800 bg-sky-50/80 border border-sky-200/80 transition-all hover:bg-sky-100 hover:border-sky-300 shadow-2xs dark:text-slate-400 dark:bg-slate-800/40 dark:border-transparent dark:hover:bg-slate-800 dark:hover:text-slate-300",
+            events.length === 0 && "opacity-75"
           )}
         >
           <Plus className="h-3 w-3" />

@@ -10,6 +10,8 @@ import { MealDetailPanel } from './components/MealDetailPanel';
 import { EventDetailPanel } from './components/EventDetailPanel';
 import { GroceryListPanel } from './components/GroceryListPanel';
 import { RecipeManager } from './components/recipes/RecipeManager';
+import { MoveCopyMealModal } from './components/MoveCopyMealModal';
+import { CopyWeekModal } from './components/CopyWeekModal';
 import { usePlanner } from './contexts/PlannerContext';
 import { useAuth } from './contexts/AuthContext';
 import { useWeekNavigation } from './hooks/useWeekNavigation';
@@ -20,17 +22,20 @@ import { useMealDetail } from './hooks/useMealDetail';
 import { useGroceryList } from './hooks/useGroceryList';
 import { getDaysInWeek, getWeekRangeHeader } from './utils/dateUtils';
 import { CalendarEvent, EventCategory } from './types/events';
+import { MealEntry } from './types/meals';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<AppTab>('planner');
   const [isGroceryOpen, setIsGroceryOpen] = useState(false);
+  const [isCopyWeekOpen, setIsCopyWeekOpen] = useState(false);
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
+  const [moveCopyTargetMeal, setMoveCopyTargetMeal] = useState<MealEntry | null>(null);
   
   const { user, loading: authLoading, signIn } = useAuth();
   const { planners, activePlanner, loading: plannerLoading, error: plannerError } = usePlanner();
   const { theme, toggleTheme } = useWeeklyTheme();
   const { currentDate, nextWeek, prevWeek, snapToToday } = useWeekNavigation();
-  const { entries, recentRecipeIds, addMeal, addMealFromRecipe, editMealName, removeMeal, copyMeal, moveMeal, refreshMeals } = useMeals(currentDate);
+  const { entries, recentRecipeIds, addMeal, addMealFromRecipe, editMealName, removeMeal, copyMeal, moveMeal, moveMealToDate, refreshMeals } = useMeals(currentDate);
   const { events, addEvent, editEvent, removeEvent, copyEvent, moveEvent, refreshEvents } = useEvents(currentDate);
   const { activeMealId, meal: activeMealDetail, openPanel, closePanel, updateDetail } = useMealDetail();
   
@@ -71,7 +76,7 @@ export default function App() {
     );
   }
 
-  if (plannerError || !activePlanner) {
+  if (!activePlanner) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-[#0f172a] p-4 text-center">
         <div className="max-w-md space-y-4">
@@ -109,13 +114,13 @@ export default function App() {
     grocery.refreshList();
   };
 
-  const handleAddMealFromRecipe = (recipeId: string, name: string, dateStr: string, type: any) => {
-    addMealFromRecipe(recipeId, name, dateStr, type);
+  const handleAddMealFromRecipe = (recipeOrId: any, nameOrDateStr: string, dateStrOrType?: any, maybeType?: any) => {
+    addMealFromRecipe(recipeOrId, nameOrDateStr, dateStrOrType, maybeType);
     setCurrentTab('planner');
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans transition-colors duration-500 dark:bg-[#0f172a]">
+    <div className="min-h-screen bg-linear-to-br from-purple-50/60 via-sky-50/40 to-amber-50/50 font-sans transition-colors duration-300 dark:from-[#0f172a] dark:via-[#0f172a] dark:to-[#0f172a]">
       <Header
         title={weekRange}
         theme={theme}
@@ -126,7 +131,16 @@ export default function App() {
         onNextWeek={nextWeek}
         onToday={snapToToday}
         onOpenGrocery={() => setIsGroceryOpen(true)}
+        onCopyPreviousWeek={() => setIsCopyWeekOpen(true)}
       />
+      
+      {plannerError && (
+        <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-8">
+          <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+            <span>{plannerError}</span>
+          </div>
+        </div>
+      )}
       
       <main className="py-6 sm:py-12">
         {currentTab === 'planner' ? (
@@ -142,16 +156,20 @@ export default function App() {
               events={events}
               recentRecipeIds={recentRecipeIds}
               onAddMeal={addMeal}
+              onAddMealFromRecipe={handleAddMealFromRecipe}
               onUpdateMeal={editMealName}
               onDeleteMeal={removeMeal}
               onDuplicateMeal={copyMeal}
               onOpenDetail={openPanel}
+              onOpenMoveCopyModal={setMoveCopyTargetMeal}
               onMoveMeal={moveMeal}
+              onMoveMealToDate={moveMealToDate}
               onAddEvent={addEvent}
               onDeleteEvent={removeEvent}
               onDuplicateEvent={copyEvent}
               onOpenEventDetail={setActiveEventId}
               onMoveEvent={moveEvent}
+              onCopyPreviousWeek={() => setIsCopyWeekOpen(true)}
             />
           </>
         ) : (
@@ -159,11 +177,31 @@ export default function App() {
         )}
       </main>
 
+      <CopyWeekModal
+        isOpen={isCopyWeekOpen}
+        targetDate={currentDate}
+        onClose={() => setIsCopyWeekOpen(false)}
+        onSuccess={() => {
+          grocery.refreshList();
+        }}
+      />
+
       <MealDetailPanel 
         isOpen={!!activeMealId}
         meal={activeMealDetail}
         onClose={handlePanelClose}
         onUpdate={handleUpdateDetail}
+        onDuplicate={copyMeal}
+        onMove={moveMealToDate}
+        onOpenMoveCopyModal={setMoveCopyTargetMeal}
+      />
+
+      <MoveCopyMealModal
+        isOpen={Boolean(moveCopyTargetMeal)}
+        meal={moveCopyTargetMeal}
+        onClose={() => setMoveCopyTargetMeal(null)}
+        onCopy={(id, targetDate, targetType) => copyMeal(id, targetDate, targetType)}
+        onMove={(id, targetDate, targetType) => moveMealToDate(id, targetDate, targetType)}
       />
 
       <EventDetailPanel

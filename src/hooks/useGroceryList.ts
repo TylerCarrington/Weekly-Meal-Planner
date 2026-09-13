@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GroceryItem } from '../types/grocery';
 import { buildGroceryListFromWeek, saveManualItem, toggleItemChecked, removeItem, clearCheckedItems } from '../storage/grocery';
-import { getWeekKey } from '../utils/dateUtils';
+import { getWeekKey, WEEK_STARTS_ON } from '../utils/dateUtils';
 import { usePlanner } from '../contexts/PlannerContext';
 import { startOfWeek, endOfWeek, format } from 'date-fns';
 
@@ -10,8 +10,8 @@ export function useGroceryList(date: Date, isOpen: boolean) {
   const [items, setItems] = useState<GroceryItem[]>([]);
   const weekKey = getWeekKey(date);
 
-  const start = startOfWeek(date, { weekStartsOn: 1 });
-  const end = endOfWeek(date, { weekStartsOn: 1 });
+  const start = startOfWeek(date, { weekStartsOn: WEEK_STARTS_ON });
+  const end = endOfWeek(date, { weekStartsOn: WEEK_STARTS_ON });
   const startStr = format(start, 'yyyy-MM-dd');
   const endStr = format(end, 'yyyy-MM-dd');
 

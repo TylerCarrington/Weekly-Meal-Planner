@@ -52,36 +52,42 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       setError(null);
       try {
+        const params = new URLSearchParams(window.location.search);
+        const joinId = params.get('join');
+
         let pList = await fetchUserPlanners();
-        console.log("Fetched planners:", pList);
-        
+        let targetPlanner: PlannerInfo | null = null;
+
+        if (joinId) {
+          try {
+            console.log("Attempting to join planner:", joinId);
+            const joinedInfo = await joinPlannerApi(joinId);
+            pList = await fetchUserPlanners();
+            targetPlanner = pList.find(p => p.id === joinId) || joinedInfo;
+            const cleanUrl = window.location.pathname + window.location.hash;
+            window.history.replaceState({}, document.title, cleanUrl);
+          } catch (e: any) {
+            console.error("Failed to join via invite link", e);
+            setError(`Could not join shared planner: ${e.message || 'Invalid link or access denied'}`);
+          }
+        }
+
         if (pList.length === 0) {
           console.log("No planners found, creating default...");
           const newPlanner = await createPlanner('My Planner');
           pList = [newPlanner];
         }
+
         setPlanners(pList);
-        
-        const params = new URLSearchParams(window.location.search);
-        const joinId = params.get('join');
-        
-        let targetPlanner: PlannerInfo | null = null;
-        if (joinId && !pList.find(p => p.id === joinId)) {
-          try {
-            console.log("Attempting to join planner:", joinId);
-            await joinPlannerApi(joinId);
-            pList = await fetchUserPlanners();
-            setPlanners(pList);
+
+        if (!targetPlanner) {
+          if (joinId) {
             targetPlanner = pList.find(p => p.id === joinId) || pList[0];
-            window.history.replaceState({}, document.title, window.location.pathname);
-          } catch(e) {
-            console.error("Failed to join via invite link", e);
+          } else {
             targetPlanner = pList[0];
           }
-        } else {
-          targetPlanner = pList.find(p => p.id === joinId) || pList[0];
         }
-        
+
         console.log("Setting active planner:", targetPlanner);
         setActivePlanner(targetPlanner);
       } catch (e: any) {
@@ -120,11 +126,12 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
 
   const joinPlanner = async (plannerId: string) => {
     try {
-      await joinPlannerApi(plannerId);
+      const joined = await joinPlannerApi(plannerId);
       const pList = await fetchUserPlanners();
       setPlanners(pList);
-      setActivePlanner(pList.find(p => p.id === plannerId) || pList[0]);
-      window.history.replaceState({}, document.title, window.location.pathname);
+      setActivePlanner(pList.find(p => p.id === plannerId) || joined || pList[0]);
+      const cleanUrl = window.location.pathname + window.location.hash;
+      window.history.replaceState({}, document.title, cleanUrl);
     } catch (e: any) {
       setError(e.message || 'Failed to join planner');
       throw e;

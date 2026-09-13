@@ -42,10 +42,15 @@ service cloud.firestore {
 
     function isValidPlannerMember(data) {
       return data.keys().hasAll(['email', 'role', 'joinedAt']) &&
-             data.keys().size() <= 3 &&
-             data.email is string && data.email.size() > 0 && data.email.size() <= 200 &&
+             data.keys().size() <= 4 &&
+             data.email is string && data.email.size() <= 200 &&
              data.role in ['owner', 'editor', 'viewer'] &&
              data.joinedAt is number;
+    }
+
+    function isValidNewPlannerMember(plannerId, data) {
+      return isValidPlannerMember(data) && 
+             (isPlannerOwner(plannerId) || data.role in ['editor', 'viewer']);
     }
 
     function isValidMealEntry(data) {
@@ -94,7 +99,7 @@ service cloud.firestore {
     }
 
     match /planners/{plannerId} {
-      allow get: if isPlannerMember(plannerId);
+      allow get: if isSignedIn();
       allow list: if false; // Users query their planner list via `members`
       allow create: if isSignedIn() && isValidId(plannerId) && isValidPlanner(incoming());
       allow update: if isPlannerOwner(plannerId) && incoming().diff(existing()).affectedKeys().hasOnly(['name']) && incoming().name is string && incoming().name.size() <= 100;
@@ -108,16 +113,18 @@ service cloud.firestore {
     match /planners/{plannerId}/members/{userId} {
       allow read: if isPlannerMember(plannerId) || request.auth.uid == userId;
       allow list: if isValidId(userId) && request.auth.uid == userId; // For querying what planners I am a member of using collectionGroup
-      allow create: if (isPlannerOwner(plannerId) || (isSignedIn() && userId == request.auth.uid && exists(/databases/$(database)/documents/planners/$(plannerId)/invites/$(request.auth.token.email))) || (isSignedIn() && userId == request.auth.uid && !exists(/databases/$(database)/documents/planners/$(plannerId))))
-                    && isValidId(userId) && isValidPlannerMember(incoming());
+      allow create: if (
+                      isPlannerOwner(plannerId) || 
+                      (isSignedIn() && userId == request.auth.uid && exists(/databases/$(database)/documents/planners/$(plannerId)))
+                    ) && isValidId(userId) && isValidNewPlannerMember(plannerId, incoming());
       allow update: if isPlannerOwner(plannerId) && incoming().diff(existing()).affectedKeys().hasOnly(['role']) && incoming().role in ['owner', 'editor', 'viewer'];
       allow delete: if isPlannerOwner(plannerId) && userId != request.auth.uid; // Don't delete self
     }
 
     match /planners/{plannerId}/invites/{emailId} {
-      allow read: if isPlannerMember(plannerId) || (isSignedIn() && request.auth.token.email == emailId);
+      allow read: if isPlannerMember(plannerId) || (isSignedIn() && (request.auth.token.email == emailId || request.auth.token.email.lower() == emailId));
       allow create, update: if isPlannerOwner(plannerId) && isValidInvite(incoming());
-      allow delete: if isPlannerOwner(plannerId) || (isSignedIn() && request.auth.token.email == emailId);
+      allow delete: if isPlannerOwner(plannerId) || (isSignedIn() && (request.auth.token.email == emailId || request.auth.token.email.lower() == emailId));
     }
 
     match /planners/{plannerId}/meals/{mealId} {

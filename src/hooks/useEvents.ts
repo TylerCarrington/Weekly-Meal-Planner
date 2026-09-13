@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { CalendarEvent, EventCategory } from '../types/events';
 import { saveEvent, updateEvent, deleteEvent, duplicateEvent } from '../storage/events';
-import { getWeekKey } from '../utils/dateUtils';
+import { getWeekKey, WEEK_STARTS_ON } from '../utils/dateUtils';
 import { usePlanner } from '../contexts/PlannerContext';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
@@ -18,8 +18,8 @@ export function useEvents(currentDate: Date | string) {
 
     // Use viewDate based logic if currentDate is a string or Date
     const viewDate = typeof currentDate === 'string' ? new Date(currentDate) : currentDate;
-    const start = startOfWeek(viewDate, { weekStartsOn: 1 });
-    const end = endOfWeek(viewDate, { weekStartsOn: 1 });
+    const start = startOfWeek(viewDate, { weekStartsOn: WEEK_STARTS_ON });
+    const end = endOfWeek(viewDate, { weekStartsOn: WEEK_STARTS_ON });
     const startStr = format(start, 'yyyy-MM-dd');
     const endStr = format(end, 'yyyy-MM-dd');
 

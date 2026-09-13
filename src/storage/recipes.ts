@@ -44,6 +44,18 @@ export async function getRecipes(plannerId: string): Promise<{ data?: Recipe[]; 
   }
 }
 
+export async function getRecipe(plannerId: string, id: string): Promise<{ data?: Recipe; error?: string }> {
+  try {
+    const docRef = doc(db, `planners/${plannerId}/recipes`, id);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return { error: 'Recipe not found' };
+    return { data: withComputed({ id: snap.id, ...snap.data() } as Recipe) };
+  } catch (e) {
+    handleFirestoreError(e, OperationType.GET, `planners/${plannerId}/recipes/${id}`);
+    return { error: 'Failed to load recipe' };
+  }
+}
+
 export async function saveRecipe(
   plannerId: string,
   recipeData: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt' | 'timesUsed' | 'totalTime'>

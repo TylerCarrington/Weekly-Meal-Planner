@@ -3,9 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect } from 'react';
-import { X, Image as ImageIcon } from 'lucide-react';
-import { MealEntry } from '../types/meals';
+import React, { useEffect, useState } from 'react';
+import { format, addDays, parseISO } from 'date-fns';
+import { X, Image as ImageIcon, Copy, ArrowRight, ArrowRightLeft, BookOpen } from 'lucide-react';
+import { MealEntry, MealType } from '../types/meals';
+import { Recipe } from '../types/recipes';
+import { RecipePickerModal } from './recipes/RecipePickerModal';
 import { BlurInput } from './detail/BlurInput';
 import { BlurTextArea } from './detail/BlurTextArea';
 import { StarRating } from './detail/StarRating';
@@ -17,9 +20,21 @@ interface MealDetailPanelProps {
   meal: MealEntry | null;
   onClose: () => void;
   onUpdate: (updates: any) => void;
+  onDuplicate?: (id: string, targetDateStr?: string, targetType?: MealType) => void;
+  onMove?: (id: string, targetDateStr: string, targetType?: MealType) => void;
+  onOpenMoveCopyModal?: (meal: MealEntry) => void;
 }
 
-export function MealDetailPanel({ isOpen, meal, onClose, onUpdate }: MealDetailPanelProps) {
+export function MealDetailPanel({ 
+  isOpen, 
+  meal, 
+  onClose, 
+  onUpdate,
+  onDuplicate,
+  onOpenMoveCopyModal,
+}: MealDetailPanelProps) {
+  const [isRecipePickerOpen, setIsRecipePickerOpen] = useState(false);
+
   // Prevent body scrolling when open on mobile
   useEffect(() => {
     if (isOpen) {
@@ -65,8 +80,39 @@ export function MealDetailPanel({ isOpen, meal, onClose, onUpdate }: MealDetailP
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar">
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-6">
             
+            {/* Quick Action Bar for Copy, Move & Link Recipe */}
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50/70 p-3 dark:border-indigo-900/50 dark:bg-indigo-950/40">
+              <button
+                type="button"
+                onClick={() => {
+                  const nextDate = format(addDays(parseISO(meal.date), 1), 'yyyy-MM-dd');
+                  onDuplicate?.(meal.id, nextDate, meal.type);
+                }}
+                className="flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50 dark:border-indigo-800 dark:bg-slate-800 dark:text-indigo-300 dark:hover:bg-slate-700"
+              >
+                <ArrowRight className="h-3.5 w-3.5" />
+                Copy to Next Day
+              </button>
+              <button
+                type="button"
+                onClick={() => onOpenMoveCopyModal?.(meal)}
+                className="flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50 dark:border-indigo-800 dark:bg-slate-800 dark:text-indigo-300 dark:hover:bg-slate-700"
+              >
+                <ArrowRightLeft className="h-3.5 w-3.5" />
+                Move or Copy to...
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsRecipePickerOpen(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-purple-200 bg-white px-3 py-1.5 text-xs font-semibold text-purple-700 shadow-sm transition hover:bg-purple-50 dark:border-purple-800 dark:bg-slate-800 dark:text-purple-300 dark:hover:bg-slate-700"
+              >
+                <BookOpen className="h-3.5 w-3.5" />
+                {meal.recipeId ? "Replace with Recipe" : "Load from Recipe"}
+              </button>
+            </div>
+
             {/* Header / Hero Section */}
             <div className="flex flex-col gap-4">
               {meal.imageUrl ? (
@@ -187,6 +233,34 @@ export function MealDetailPanel({ isOpen, meal, onClose, onUpdate }: MealDetailP
           </div>
         </div>
       </div>
+
+      {isRecipePickerOpen && (
+        <RecipePickerModal
+          isOpen={isRecipePickerOpen}
+          targetDateStr={meal.date}
+          targetType={meal.type}
+          onClose={() => setIsRecipePickerOpen(false)}
+          onSelectRecipe={(recipe) => {
+            onUpdate({
+              name: recipe.name,
+              recipeId: recipe.id,
+              imageUrl: recipe.imageUrl || '',
+              ingredients: recipe.ingredients || [],
+              directions: recipe.directions || '',
+              notes: recipe.notes || '',
+              sourceUrl: recipe.sourceUrl || '',
+              prepTime: recipe.prepTime,
+              cookTime: recipe.cookTime,
+              servings: recipe.servings,
+              cuisineTag: recipe.cuisineTag || '',
+              dietaryFlags: recipe.dietaryFlags || [],
+              rating: recipe.rating,
+              labels: recipe.labels || [],
+            });
+            setIsRecipePickerOpen(false);
+          }}
+        />
+      )}
     </>
   );
 }

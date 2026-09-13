@@ -8,12 +8,14 @@ import { Theme } from '../types';
 
 export function useWeeklyTheme() {
   const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem('planner-theme');
+    const saved = localStorage.getItem('planner-theme-mode');
     if (saved === 'light' || saved === 'dark') return saved;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    // Default to light mode for the user's bright pastel request
+    return 'light';
   });
 
   useEffect(() => {
+    localStorage.setItem('planner-theme-mode', theme);
     localStorage.setItem('planner-theme', theme);
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
