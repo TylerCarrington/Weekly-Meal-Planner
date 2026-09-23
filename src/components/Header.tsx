@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ChevronLeft, ChevronRight, Moon, Sun, ShoppingCart, Share2, Users, Loader2, LogOut, Copy, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Moon, Sun, ShoppingCart, Share2, Users, Loader2, LogOut, Copy, Check, Printer } from 'lucide-react';
 import { Theme } from '../types';
 import { cn } from '../lib/utils';
 import { usePlanner } from '../contexts/PlannerContext';
@@ -24,6 +24,7 @@ interface HeaderProps {
   onToday: () => void;
   onOpenGrocery: () => void;
   onCopyPreviousWeek?: () => void;
+  onPrint?: () => void;
 }
 
 export function Header({
@@ -37,6 +38,7 @@ export function Header({
   onToday,
   onOpenGrocery,
   onCopyPreviousWeek,
+  onPrint,
 }: HeaderProps) {
   const { activePlanner, planners, setActivePlanner, members } = usePlanner();
   const { logOut } = useAuth();
@@ -227,10 +229,21 @@ export function Header({
               {currentTab === 'planner' && (
                 <button
                   onClick={onOpenGrocery}
-                  className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50/80 px-3 py-1.5 text-xs font-semibold text-emerald-800 shadow-2xs transition-colors hover:bg-emerald-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-900"
+                  className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50/80 px-3 py-1.5 text-xs font-semibold text-emerald-800 shadow-2xs transition-colors hover:bg-emerald-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 cursor-pointer"
                 >
                   <ShoppingCart className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span className="hidden sm:inline">Groceries</span>
+                </button>
+              )}
+
+              {currentTab === 'planner' && onPrint && (
+                <button
+                  onClick={onPrint}
+                  title="Print single-page schedule (Black & White)"
+                  className="flex items-center gap-1.5 rounded-full border border-slate-300 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-2xs transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  <Printer className="h-3.5 w-3.5 text-slate-700 dark:text-slate-300" />
+                  <span className="hidden sm:inline">Print</span>
                 </button>
               )}
               <button

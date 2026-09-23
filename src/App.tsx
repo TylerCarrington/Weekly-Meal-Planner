@@ -13,6 +13,8 @@ import { RecipeManager } from './components/recipes/RecipeManager';
 import { MoveCopyMealModal } from './components/MoveCopyMealModal';
 import { CopyWeekModal } from './components/CopyWeekModal';
 import { PwaInstallPrompt } from './components/PwaInstallPrompt';
+import { PrintPreviewModal } from './components/print/PrintPreviewModal';
+import { PrintableSchedule } from './components/print/PrintableSchedule';
 import { usePlanner } from './contexts/PlannerContext';
 import { useAuth } from './contexts/AuthContext';
 import { useWeekNavigation } from './hooks/useWeekNavigation';
@@ -21,6 +23,7 @@ import { useMeals } from './hooks/useMeals';
 import { useEvents } from './hooks/useEvents';
 import { useMealDetail } from './hooks/useMealDetail';
 import { useGroceryList } from './hooks/useGroceryList';
+import { usePrintSchedule } from './hooks/usePrintSchedule';
 import { getDaysInWeek, getWeekRangeHeader } from './utils/dateUtils';
 import { CalendarEvent, EventCategory } from './types/events';
 import { MealEntry } from './types/meals';
@@ -31,6 +34,8 @@ export default function App() {
   const [isCopyWeekOpen, setIsCopyWeekOpen] = useState(false);
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [moveCopyTargetMeal, setMoveCopyTargetMeal] = useState<MealEntry | null>(null);
+  
+  const printSchedule = usePrintSchedule();
   
   const { user, loading: authLoading, signIn } = useAuth();
   const { planners, activePlanner, loading: plannerLoading, error: plannerError } = usePlanner();
@@ -133,6 +138,7 @@ export default function App() {
         onToday={snapToToday}
         onOpenGrocery={() => setIsGroceryOpen(true)}
         onCopyPreviousWeek={() => setIsCopyWeekOpen(true)}
+        onPrint={printSchedule.openPrint}
       />
       
       {plannerError && (
@@ -235,6 +241,32 @@ export default function App() {
       </footer>
 
       <PwaInstallPrompt />
+
+      <PrintPreviewModal
+        isOpen={printSchedule.isOpen}
+        days={days}
+        meals={entries}
+        events={events}
+        weekRange={weekRange}
+        plannerName={activePlanner?.name}
+        options={printSchedule.options}
+        onClose={printSchedule.closePrint}
+        onPrint={printSchedule.executePrint}
+        onSetOrientation={printSchedule.setOrientation}
+        onToggleEvents={printSchedule.setIncludeEvents}
+        onToggleBlankSlots={printSchedule.setIncludeBlankSlots}
+      />
+
+      <div className="print-only-container">
+        <PrintableSchedule
+          days={days}
+          meals={entries}
+          events={events}
+          weekRange={weekRange}
+          plannerName={activePlanner?.name}
+          options={printSchedule.options}
+        />
+      </div>
     </div>
   );
 }
