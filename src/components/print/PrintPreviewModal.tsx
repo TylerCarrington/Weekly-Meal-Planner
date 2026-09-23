@@ -56,7 +56,7 @@ export function PrintPreviewModal({
                 Print Weekly Schedule
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Single-page high contrast black & white layout
+                Ink-saver pure black & white layout (no grays or ink fills)
               </p>
             </div>
           </div>

@@ -54,13 +54,13 @@ export function PrintableSchedule({
           <h1 className="text-sm font-black tracking-tight uppercase text-black">
             {plannerName ? `${plannerName} — ` : ''}Weekly Meal & Activity Plan
           </h1>
-          <p className="text-[10px] font-semibold text-neutral-800">
+          <p className="text-[10px] font-semibold text-black">
             {weekRange}
           </p>
         </div>
-        <div className="text-right text-[8px] text-neutral-600 font-medium">
+        <div className="text-right text-[8px] text-black font-medium">
           <div>Printed on {currentDateFormatted}</div>
-          <div>Black & White Single-Page Edition</div>
+          <div>Ink-Saver Pure Black & White Edition</div>
         </div>
       </div>
 
@@ -96,10 +96,10 @@ export function PrintableSchedule({
       </div>
 
       {/* Sheet Bottom Footer / Notes & Grocery Reminder */}
-      <div className="pt-1.5 mt-1 flex items-center justify-between text-[8px] text-neutral-600 border-t border-neutral-300 shrink-0">
+      <div className="pt-1.5 mt-1 flex items-center justify-between text-[8px] text-black border-t border-black shrink-0">
         <div className="flex items-center gap-3">
           <span className="font-bold uppercase tracking-wider text-black">Weekly Focus / Notes:</span>
-          <span className="inline-block border-b border-dotted border-neutral-400 w-64 h-2" />
+          <span className="inline-block border-b border-dotted border-black w-64 h-2" />
         </div>
         <div className="flex items-center gap-2">
           <span>Water: [ ] [ ] [ ] [ ] [ ] [ ] [ ]</span>
